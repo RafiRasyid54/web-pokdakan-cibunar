@@ -1,52 +1,113 @@
 "use client";
 
-import Link from 'next/link';
-import { Phone, Lock, Moon, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Menu, X } from 'lucide-react';
 
 export default function Navbar() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  // Efek untuk mengubah tampilan navbar saat di-scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const navLinks = [
+    { name: 'Beranda', href: '#beranda' },
+    { name: 'Tentang Kami', href: '#tentang' },
+    { name: 'Produk', href: '#produk' },
+    { name: 'Dokumentasi', href: '#dokumentasi' },
+    { name: 'Kontak', href: '#kontak' },
+  ];
 
   return (
-    <nav className="bg-white dark:bg-slate-950 sticky top-0 z-50 border-b border-gray-100 dark:border-slate-800 shadow-sm transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-        
-        {/* Logo */}
-        <Link href="/#beranda" className="flex items-center gap-3 text-emerald-800 dark:text-emerald-400 hover:text-emerald-600 transition">
-          <img src="/logo-cibunar.png" alt="Logo Cibunar Lestari" className="w-12 h-12 object-contain drop-shadow-sm" />
-          <div className="flex flex-col">
-            <span className="font-extrabold text-xl tracking-tight leading-none text-slate-900 dark:text-white">Cibunar Lestari</span>
-            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mt-1">
-              Pokdakan Ikan Lele
-            </span>
-          </div>
-        </Link>
-
-        {/* Akses Admin, Toggle Tema, & Kontak */}
-        <div className="flex items-center gap-4">
+    <nav 
+      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-white/80 dark:bg-slate-950/80 backdrop-blur-md shadow-sm border-b border-gray-100 dark:border-slate-800' 
+          : 'bg-emerald-50 dark:bg-slate-900 border-b border-transparent'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex justify-between items-center h-20">
           
-          {/* Tombol Toggle Tema */}
-          {mounted && (
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition"
-              title="Ganti Tema"
-            >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-          )}
+          {/* Logo / Judul */}
+          <div className="shrink-0 flex items-center">
+            <a href="#beranda" className="flex items-center gap-2 group">
+              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-xl group-hover:bg-emerald-700 transition-colors shadow-md">
+                CL
+              </div>
+              <span className="font-extrabold text-xl text-slate-900 dark:text-white tracking-tight">
+                Cibunar <span className="text-emerald-600 dark:text-emerald-500">Lestari</span>
+              </span>
+            </a>
+          </div>
 
-          <Link href="/admin/login" className="text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition p-1" title="Masuk Admin Panel">
-            <Lock size={18} />
-          </Link>
-          <a href="/#kontak" className="hidden md:flex items-center gap-2 bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-emerald-800 transition shadow-sm">
-            <Phone size={18} />
-            <span>Hubungi Admin</span>
-          </a>
+          {/* Menu Desktop */}
+          <div className="hidden md:flex items-center gap-8">
+            {navLinks.map((link) => (
+              <a 
+                key={link.name} 
+                href={link.href}
+                className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              >
+                {link.name}
+              </a>
+            ))}
+            <a 
+              href="https://wa.me/6281234567890" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="bg-emerald-700 dark:bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-800 dark:hover:bg-emerald-500 transition-colors shadow-sm"
+            >
+              Order Sekarang
+            </a>
+          </div>
+
+          {/* Tombol Hamburger Mobile */}
+          <div className="md:hidden flex items-center">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors p-2"
+              aria-label="Toggle menu"
+            >
+              {isOpen ? <X size={28} /> : <Menu size={28} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Menu Mobile Dropdown */}
+      <div 
+        className={`md:hidden absolute w-full bg-white dark:bg-slate-950 border-b border-gray-100 dark:border-slate-800 shadow-xl transition-all duration-300 ease-in-out overflow-hidden ${
+          isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="px-4 pt-2 pb-6 space-y-2 flex flex-col">
+          {navLinks.map((link) => (
+            <a
+              key={link.name}
+              href={link.href}
+              onClick={() => setIsOpen(false)} // Tutup menu saat diklik
+              className="block px-4 py-3 rounded-xl text-base font-semibold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-900 hover:text-emerald-700 dark:hover:text-emerald-400 transition-all"
+            >
+              {link.name}
+            </a>
+          ))}
+          <div className="pt-4 pb-2 px-4">
+            <a 
+              href="https://wa.me/6281234567890" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="block text-center w-full bg-emerald-700 dark:bg-emerald-600 text-white px-5 py-3.5 rounded-xl font-bold hover:bg-emerald-800 dark:hover:bg-emerald-500 transition-colors shadow-md"
+            >
+              Order via WhatsApp
+            </a>
+          </div>
         </div>
       </div>
     </nav>
