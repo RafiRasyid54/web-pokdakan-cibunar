@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { LogOut, Plus, Trash2, Home, Package, CheckCircle, XCircle, Pencil, X } from 'lucide-react';
+import { LogOut, Plus, Trash2, Home, Package, CheckCircle, XCircle, Pencil, X, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardAdmin() {
   const router = useRouter();
   const [produkList, setProdukList] = useState<any[]>([]);
+  const [totalDokumentasi, setTotalDokumentasi] = useState(0);
   const [loading, setLoading] = useState(true);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
@@ -34,38 +35,41 @@ export default function DashboardAdmin() {
         return;
       }
       setCheckingAuth(false);
-      fetchProduk();
+      fetchDashboardData();
     };
     checkUserAndFetchData();
   }, [router]);
 
-  // 2. Fungsi Read Data
-  const fetchProduk = async () => {
+  // 2. Fungsi Read Data (Katalog & Total Dokumentasi)
+  const fetchDashboardData = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    
+    // Ambil Data Produk
+    const { data: produkData, error: produkError } = await supabase
       .from('produk_ikan')
       .select('*')
       .order('created_at', { ascending: false });
     
-    if (error) {
-      console.error('Gagal mengambil data:', error);
-    } else {
-      setProdukList(data || []);
-    }
+    if (produkError) console.error('Gagal mengambil data produk:', produkError);
+    else setProdukList(produkData || []);
+
+    // Ambil Total Dokumentasi
+    const { count } = await supabase
+      .from('dokumentasi')
+      .select('*', { count: 'exact', head: true });
+    
+    setTotalDokumentasi(count || 0);
     setLoading(false);
   };
 
-  // 3. Fungsi Delete Data
+  // 3. Fungsi Delete Data Produk
   const handleDelete = async (id: number, nama: string) => {
     const confirmDelete = window.confirm(`Apakah Anda yakin ingin menghapus "${nama}"?`);
     if (!confirmDelete) return;
 
     const { error } = await supabase.from('produk_ikan').delete().eq('id', id);
-    if (error) {
-      alert('Gagal menghapus data: ' + error.message);
-    } else {
-      setProdukList(produkList.filter(item => item.id !== id));
-    }
+    if (error) alert('Gagal menghapus data: ' + error.message);
+    else setProdukList(produkList.filter(item => item.id !== id));
   };
 
   // 4. BUKA MODAL EDIT DAN ISI DATA LAMA
@@ -87,21 +91,15 @@ export default function DashboardAdmin() {
     e.preventDefault();
     setIsUpdating(true);
 
-    const { error } = await supabase
-      .from('produk_ikan')
-      .update(editFormData)
-      .eq('id', editingId);
+    const { error } = await supabase.from('produk_ikan').update(editFormData).eq('id', editingId);
 
     setIsUpdating(false);
 
     if (error) {
       alert('Gagal mengupdate data: ' + error.message);
     } else {
-      // Update data di tabel lokal tanpa perlu refresh halaman
-      setProdukList(produkList.map(item => 
-        item.id === editingId ? { ...item, ...editFormData } : item
-      ));
-      setIsEditModalOpen(false); // Tutup modal
+      setProdukList(produkList.map(item => item.id === editingId ? { ...item, ...editFormData } : item));
+      setIsEditModalOpen(false);
       alert('Data produk berhasil diperbarui!');
     }
   };
@@ -123,35 +121,42 @@ export default function DashboardAdmin() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-12 transition-colors duration-300">
       
       {/* Top Navigation */}
-      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 transition-colors">
+      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 transition-colors shadow-sm">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-slate-500 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition flex items-center gap-2 font-semibold" title="Lihat Website Publik">
-              <Home size={18} /> <span className="hidden sm:inline">Lihat Website</span>
+          <div className="flex items-center gap-4 md:gap-6 overflow-x-auto scrollbar-hide">
+            <Link href="/" className="text-slate-500 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 transition flex items-center gap-2 font-bold shrink-0" title="Lihat Website Publik">
+              <Home size={18} /> <span className="hidden sm:inline">Website</span>
             </Link>
-            <div className="font-bold text-slate-800 dark:text-white border-l border-slate-200 dark:border-slate-700 pl-4">Dashboard Pokdakan</div>
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 shrink-0"></div>
+            
+            <Link href="/admin/dashboard" className="font-bold text-emerald-700 dark:text-emerald-400 border-b-2 border-emerald-700 dark:border-emerald-400 py-5 shrink-0 transition">
+              Katalog Produk
+            </Link>
+            <Link href="/admin/dokumentasi" className="font-bold text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 py-5 shrink-0 transition">
+              Galeri Dokumentasi
+            </Link>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition bg-rose-50 dark:bg-rose-900/30 px-4 py-2 rounded-lg">
-            <LogOut size={16} /> Keluar
+          <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition bg-rose-50 dark:bg-rose-900/30 px-4 py-2 rounded-lg shrink-0 ml-4">
+            <LogOut size={16} /> <span className="hidden sm:inline">Keluar</span>
           </button>
         </div>
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 mt-8">
         
+        {/* Header Title & Button Tambah di Ujung Kanan */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Manajemen Katalog</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-1">Pantau dan kelola seluruh daftar benih maupun lele konsumsi.</p>
           </div>
-          <Link href="/admin/tambah-produk" className="inline-flex items-center gap-2 bg-emerald-700 dark:bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-emerald-800 dark:hover:bg-emerald-500 transition shadow-md whitespace-nowrap">
-            <Plus size={20} /> Tambah Produk Baru
+          <Link href="/admin/tambah" className="inline-flex items-center gap-2 bg-emerald-700 dark:bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-emerald-800 dark:hover:bg-emerald-500 transition shadow-md whitespace-nowrap">
+            <Plus size={20} /> Tambah Produk
           </Link>
         </div>
 
         {/* Statistik Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* ... (Statistik tetap sama) ... */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 transition-colors">
             <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-xl text-blue-600 dark:text-blue-400"><Package size={28} /></div>
             <div>
@@ -173,12 +178,19 @@ export default function DashboardAdmin() {
               <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{stokKosong}</p>
             </div>
           </div>
+          <Link href="/admin/dokumentasi" className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 transition hover:border-purple-300 dark:hover:border-purple-800 hover:shadow-md group cursor-pointer">
+            <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-xl text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform"><ImageIcon size={28} /></div>
+            <div>
+              <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Dokumentasi</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{totalDokumentasi} <span className="text-xs text-purple-500 font-medium ml-1">Kelola ➔</span></p>
+            </div>
+          </Link>
         </div>
 
-        {/* Tabel Data */}
+        {/* Tabel Data Produk */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-150">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-sm">
                   <th className="p-4 font-bold text-slate-700 dark:text-slate-300">Info Produk</th>
@@ -202,7 +214,7 @@ export default function DashboardAdmin() {
                             {produk.image_url ? (
                               <img src={produk.image_url} alt={produk.nama} className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 dark:text-slate-500">No Img</div>
+                              <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400 dark:text-slate-500">NO IMG</div>
                             )}
                           </div>
                           <div>
@@ -214,28 +226,14 @@ export default function DashboardAdmin() {
                       <td className="p-4 text-sm text-slate-700 dark:text-slate-300">{produk.kategori}</td>
                       <td className="p-4 font-semibold text-emerald-700 dark:text-emerald-400">{produk.harga}</td>
                       <td className="p-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${produk.ready ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300'}`}>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${produk.ready ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300'}`}>
                           {produk.ready ? 'Ready' : 'Habis'}
                         </span>
                       </td>
                       <td className="p-4 text-right pr-6">
                         <div className="flex items-center justify-end gap-2">
-                          {/* TOMBOL EDIT */}
-                          <button 
-                            onClick={() => openEditModal(produk)}
-                            className="p-2 text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition"
-                            title="Edit Produk"
-                          >
-                            <Pencil size={18} />
-                          </button>
-                          {/* TOMBOL DELETE */}
-                          <button 
-                            onClick={() => handleDelete(produk.id, produk.nama)}
-                            className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition"
-                            title="Hapus Produk"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          <button onClick={() => openEditModal(produk)} className="p-2 text-slate-400 hover:text-emerald-600 bg-slate-50 rounded-lg transition" title="Edit Produk"><Pencil size={18} /></button>
+                          <button onClick={() => handleDelete(produk.id, produk.nama)} className="p-2 text-slate-400 hover:text-rose-600 bg-rose-50 rounded-lg transition" title="Hapus Produk"><Trash2 size={18} /></button>
                         </div>
                       </td>
                     </tr>
@@ -245,89 +243,52 @@ export default function DashboardAdmin() {
             </table>
           </div>
         </div>
-
       </div>
 
-      {/* ================= MODAL EDIT PRODUK ================= */}
+      {/* MODAL EDIT SAMA SEPERTI SEBELUMNYA */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-200">
-            
-            {/* Header Modal */}
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Edit Informasi Produk</h2>
-              <button 
-                onClick={() => setIsEditModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-slate-50 dark:bg-slate-800 p-2 rounded-full transition"
-              >
-                <X size={20} />
-              </button>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <h2 className="text-xl font-bold">Edit Informasi Produk</h2>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600 bg-slate-50 p-2 rounded-full"><X size={20} /></button>
             </div>
-
-            {/* Form Edit */}
-            <form onSubmit={handleUpdateSubmit} className="p-6">
+            <form onSubmit={handleUpdateSubmit} className="p-6 overflow-y-auto max-h-[75vh]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Nama Produk</label>
-                  <input type="text" required value={editFormData.nama}
-                    className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" 
-                    onChange={e => setEditFormData({...editFormData, nama: e.target.value})} />
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Nama Produk</label>
+                  <input type="text" required value={editFormData.nama} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" onChange={e => setEditFormData({...editFormData, nama: e.target.value})} />
                 </div>
-                
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Kategori</label>
-                  <select value={editFormData.kategori}
-                    className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                    onChange={e => setEditFormData({...editFormData, kategori: e.target.value})}>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Kategori</label>
+                  <select value={editFormData.kategori} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" onChange={e => setEditFormData({...editFormData, kategori: e.target.value})}>
                     <option value="Lele Konsumsi (Pecel/Resto)">Lele Konsumsi (Pecel/Resto)</option>
                     <option value="Benih / Bibit Lele">Benih / Bibit Lele</option>
                     <option value="Indukan Lele">Indukan Lele</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Harga</label>
-                  <input type="text" required value={editFormData.harga}
-                    className="w-full bg-slate-50 dark:bg-slate-950 text-emerald-700 dark:text-emerald-400 font-bold border border-slate-200 dark:border-slate-800 p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" 
-                    onChange={e => setEditFormData({...editFormData, harga: e.target.value})} />
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Harga</label>
+                  <input type="text" required value={editFormData.harga} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" onChange={e => setEditFormData({...editFormData, harga: e.target.value})} />
                 </div>
-
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Deskripsi</label>
-                  <textarea required rows={3} value={editFormData.deskripsi}
-                    className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-                    onChange={e => setEditFormData({...editFormData, deskripsi: e.target.value})} />
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Deskripsi</label>
+                  <textarea required rows={3} value={editFormData.deskripsi} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none" onChange={e => setEditFormData({...editFormData, deskripsi: e.target.value})} />
                 </div>
-
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">URL Gambar</label>
-                  <input type="url" value={editFormData.image_url}
-                    className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" 
-                    onChange={e => setEditFormData({...editFormData, image_url: e.target.value})} />
+                  <label className="block text-sm font-bold text-slate-700 mb-2">URL Gambar</label>
+                  <input type="url" value={editFormData.image_url} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" onChange={e => setEditFormData({...editFormData, image_url: e.target.value})} />
                 </div>
-
                 <div className="md:col-span-2 pt-2">
-                  <label className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer">
-                    <input type="checkbox" checked={editFormData.ready} 
-                      onChange={e => setEditFormData({...editFormData, ready: e.target.checked})}
-                      className="w-5 h-5 text-emerald-600 focus:ring-emerald-500 rounded border-slate-300" />
-                    <span className="font-bold text-slate-700 dark:text-slate-300 select-none">
-                      Stok Tersedia (Centang jika ready)
-                    </span>
+                  <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+                    <input type="checkbox" checked={editFormData.ready} onChange={e => setEditFormData({...editFormData, ready: e.target.checked})} className="w-5 h-5 text-emerald-600 rounded border-slate-300" />
+                    <span className="font-bold text-slate-700">Stok Tersedia (Centang jika ready)</span>
                   </label>
                 </div>
               </div>
-
-              {/* Action Buttons Modal */}
-              <div className="flex gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button type="button" onClick={() => setIsEditModalOpen(false)}
-                  className="w-1/3 py-3 font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition">
-                  Batal
-                </button>
-                <button type="submit" disabled={isUpdating}
-                  className="w-2/3 py-3 font-bold text-white bg-emerald-700 dark:bg-emerald-600 hover:bg-emerald-800 dark:hover:bg-emerald-500 rounded-xl shadow-lg transition disabled:opacity-50 flex justify-center items-center">
-                  {isUpdating ? 'Menyimpan Perubahan...' : 'Simpan Perubahan'}
-                </button>
+              <div className="flex gap-4 pt-4 border-t border-slate-100">
+                <button type="button" onClick={() => setIsEditModalOpen(false)} className="w-1/3 py-3 font-bold text-slate-600 bg-slate-100 rounded-xl">Batal</button>
+                <button type="submit" disabled={isUpdating} className="w-2/3 py-3 font-bold text-white bg-emerald-700 rounded-xl shadow-lg flex justify-center items-center">{isUpdating ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
               </div>
             </form>
           </div>
