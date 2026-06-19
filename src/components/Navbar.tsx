@@ -35,12 +35,14 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-20">
           
-          {/* Logo / Judul */}
+          {/* Logo / Judul (MENGGUNAKAN LOGO ASLI) */}
           <div className="shrink-0 flex items-center">
-            <a href="#beranda" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-xl group-hover:bg-emerald-700 transition-colors shadow-md">
-                CL
-              </div>
+            <a href="#beranda" className="flex items-center gap-2.5 group">
+              <img 
+                src="/logo-cibunar.png" 
+                alt="Logo Pokdakan Cibunar Lestari" 
+                className="w-11 h-11 object-contain group-hover:scale-105 transition-transform duration-300"
+              />
               <span className="font-extrabold text-xl text-slate-900 dark:text-white tracking-tight">
                 Cibunar <span className="text-emerald-600 dark:text-emerald-500">Lestari</span>
               </span>
@@ -92,7 +94,7 @@ export default function Navbar() {
             <a
               key={link.name}
               href={link.href}
-              onClick={() => setIsOpen(false)} // Tutup menu saat diklik
+              onClick={() => setIsOpen(false)}
               className="block px-4 py-3 rounded-xl text-base font-semibold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-900 hover:text-emerald-700 dark:hover:text-emerald-400 transition-all"
             >
               {link.name}
